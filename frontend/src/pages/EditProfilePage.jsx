@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { CITIES, SPORTS, SKILL_LEVELS, AVAILABILITY_OPTIONS } from '../data/seedData';
-import { ArrowLeft, Save, Check, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, Check, MapPin, Navigation } from 'lucide-react';
 
 export default function EditProfilePage() {
     const { currentUser, updateProfile } = useApp();
     const navigate = useNavigate();
     const [saved, setSaved] = useState(false);
+    const [locationStatus, setLocationStatus] = useState('');
     const [form, setForm] = useState({
         name: currentUser?.name || '',
         city: currentUser?.city || '',
@@ -15,7 +16,26 @@ export default function EditProfilePage() {
         skillLevel: currentUser?.skillLevel || 'Beginner',
         availability: currentUser?.availability || [],
         bio: currentUser?.bio || '',
+        latitude: currentUser?.latitude ?? null,
+        longitude: currentUser?.longitude ?? null,
     });
+
+    useEffect(() => {
+        if (!currentUser) {
+            return;
+        }
+
+        setForm({
+            name: currentUser?.name || '',
+            city: currentUser?.city || '',
+            sports: currentUser?.sports || [],
+            skillLevel: currentUser?.skillLevel || 'Beginner',
+            availability: currentUser?.availability || [],
+            bio: currentUser?.bio || '',
+            latitude: currentUser?.latitude ?? null,
+            longitude: currentUser?.longitude ?? null,
+        });
+    }, [currentUser]);
 
     const toggleSport = (sportId) => {
         setForm(prev => ({
@@ -33,6 +53,33 @@ export default function EditProfilePage() {
                 ? prev.availability.filter(a => a !== avail)
                 : [...prev.availability, avail]
         }));
+    };
+
+    const useCurrentGps = () => {
+        if (!navigator.geolocation) {
+            setLocationStatus('GPS is not available in this browser');
+            return;
+        }
+
+        setLocationStatus('Requesting your live GPS location...');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setForm((prev) => ({
+                    ...prev,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                }));
+                setLocationStatus('Live GPS location saved in the form');
+            },
+            (error) => {
+                setLocationStatus(error.message || 'Unable to read GPS location');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        );
     };
 
     const handleSave = (e) => {
@@ -66,6 +113,21 @@ export default function EditProfilePage() {
                             <p className="text-sm text-white font-medium">{currentUser.email}</p>
                             <p className="text-xs text-dark-500">Avatar generated from your name</p>
                         </div>
+                    </div>
+
+                    <div className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <div className="text-sm font-medium text-white">GPS location</div>
+                            <div className="text-xs text-dark-400 mt-1">
+                                {form.latitude && form.longitude
+                                    ? `Saved coordinates: ${form.latitude.toFixed(4)}, ${form.longitude.toFixed(4)}`
+                                    : 'No saved GPS coordinates yet. Use live GPS to improve nearby matches.'}
+                            </div>
+                            {locationStatus && <div className="text-xs text-brand-400 mt-1">{locationStatus}</div>}
+                        </div>
+                        <button type="button" onClick={useCurrentGps} className="btn-secondary inline-flex items-center gap-2 !px-4 !py-2 self-start sm:self-center">
+                            <Navigation size={14} /> Use Current GPS
+                        </button>
                     </div>
 
                     {/* Name */}

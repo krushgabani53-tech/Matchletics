@@ -9,6 +9,8 @@ router = APIRouter()
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    normalized_email = user_data.email.strip().lower()
+
     # Check if username exists
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
@@ -17,27 +19,28 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
     
     # Check if email exists
-    if db.query(User).filter(User.email == user_data.email).first():
+    if db.query(User).filter(User.email == normalized_email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists"
         )
-    
+
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         username=user_data.username,
-        email=user_data.email,
+        email=normalized_email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
-        city=user_data.city
+        city=user_data.city,
+        latitude=user_data.latitude,
+        longitude=user_data.longitude,
     )
     
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
-    # Create access token
+
     access_token = create_access_token(data={"sub": new_user.id})
     
     return {
@@ -49,7 +52,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             "username": new_user.username,
             "email": new_user.email,
             "full_name": new_user.full_name,
-            "city": new_user.city
+            "city": new_user.city,
+            "latitude": new_user.latitude,
+            "longitude": new_user.longitude,
         }
     }
 
@@ -75,6 +80,8 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
-            "city": user.city
+            "city": user.city,
+            "latitude": user.latitude,
+            "longitude": user.longitude,
         }
     }

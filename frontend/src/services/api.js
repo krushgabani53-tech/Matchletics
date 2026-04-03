@@ -71,9 +71,11 @@ class ApiService {
         });
         console.log('Register response:', response);
         console.log('Access token from response:', response.access_token ? 'EXISTS' : 'MISSING');
-        this.setToken(response.access_token);
-        console.log('Token set after register:', this.token ? 'YES' : 'NO');
-        console.log('Token value:', this.token?.substring(0, 20) + '...');
+        if (response.access_token) {
+            this.setToken(response.access_token);
+            console.log('Token set after register:', this.token ? 'YES' : 'NO');
+            console.log('Token value:', this.token?.substring(0, 20) + '...');
+        }
         return response;
     }
 

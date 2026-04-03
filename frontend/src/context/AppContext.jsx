@@ -1,12 +1,88 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 import { SEED_PLAYERS, SEED_EVENTS, SEED_MESSAGES } from '../data/seedData';
+import { getCityLocation, getUserLocation } from '../utils/location';
 
 const AppContext = createContext(null);
 
+const normalizeBackendMessages = (backendMessages, currentUserId) => {
+    const currentUserIdNumber = Number(currentUserId);
+    const threadMap = new Map();
+
+    const sortedMessages = [...backendMessages].sort(
+        (left, right) => new Date(left.created_at) - new Date(right.created_at)
+    );
+
+    sortedMessages.forEach(message => {
+        const senderId = Number(message.sender_id);
+        const receiverId = Number(message.receiver_id);
+        const otherUserId = senderId === currentUserIdNumber ? receiverId : senderId;
+        const threadId = `thread-${otherUserId}`;
+
+        if (!threadMap.has(threadId)) {
+            threadMap.set(threadId, {
+                id: threadId,
+                senderId: currentUserIdNumber,
+                receiverId: otherUserId,
+                messages: [],
+            });
+        }
+
+        const thread = threadMap.get(threadId);
+        thread.messages.push({
+            id: message.id,
+            from: senderId,
+            text: message.content,
+            timestamp: message.created_at,
+            isRead: message.is_read,
+        });
+    });
+
+    return Array.from(threadMap.values()).sort((left, right) => {
+        const leftLastMessage = left.messages[left.messages.length - 1];
+        const rightLastMessage = right.messages[right.messages.length - 1];
+
+        return new Date(rightLastMessage.timestamp) - new Date(leftLastMessage.timestamp);
+    });
+};
+
+const normalizePlayerRecord = (player) => {
+    const location = getUserLocation(player);
+    const sports = Array.isArray(player.sports)
+        ? player.sports
+            .map((sport) => (typeof sport === 'string' ? sport : sport?.sport_name))
+            .filter(Boolean)
+        : [];
+    const firstSport = Array.isArray(player.sports) ? player.sports[0] : null;
+    const skillLevel = typeof firstSport === 'string'
+        ? player.skillLevel || 'Beginner'
+        : firstSport?.skill_level || player.skillLevel || 'Beginner';
+
+    return {
+        id: player.id,
+        name: player.full_name || player.name || player.username,
+        email: player.email,
+        username: player.username,
+        city: player.city || '',
+        latitude: location?.latitude ?? player.latitude ?? null,
+        longitude: location?.longitude ?? player.longitude ?? null,
+        locationSource: location?.locationSource || player.locationSource || null,
+        sports,
+        skillLevel,
+        availability: player.availability || [],
+        bio: player.bio || '',
+        avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || player.name}`,
+        matchesPlayed: player.matchesPlayed || 0,
+        eventsJoined: player.eventsJoined || 0,
+        distanceKm: player.distance_km ?? player.distanceKm ?? null,
+    };
+};
+
+const normalizeCurrentUser = (user) => normalizePlayerRecord(user);
+
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
-    const [players, setPlayers] = useState(SEED_PLAYERS);
+    const [players, setPlayers] = useState(() => SEED_PLAYERS.map(normalizePlayerRecord));
     const [events, setEvents] = useState(SEED_EVENTS);
     const [messages, setMessages] = useState(SEED_MESSAGES);
     const [loading, setLoading] = useState(true);
@@ -19,9 +95,9 @@ export function AppProvider({ children }) {
             if (token) {
                 try {
                     const user = await api.getCurrentUser();
-                    setCurrentUser(user);
+                    setCurrentUser(normalizeCurrentUser(user));
                     setUseBackend(true);
-                    await loadBackendData();
+                    await loadBackendData(user.id);
                 } catch (error) {
                     console.error('Auth check failed:', error);
                     api.logout();
@@ -30,7 +106,7 @@ export function AppProvider({ children }) {
                 // Load from localStorage for demo mode
                 const savedUser = localStorage.getItem('demo_user');
                 if (savedUser) {
-                    setCurrentUser(JSON.parse(savedUser));
+                    setCurrentUser(normalizeCurrentUser(JSON.parse(savedUser)));
                 }
             }
             setLoading(false);
@@ -38,31 +114,18 @@ export function AppProvider({ children }) {
         checkAuth();
     }, []);
 
-    const loadBackendData = async () => {
+    const loadBackendData = async (userId) => {
         try {
             const [playersData, eventsData] = await Promise.all([
                 api.searchPlayers(),
                 api.getEvents(),
             ]);
             
-            // Normalize players data to match frontend format
-            const normalizedPlayers = playersData.map(player => ({
-                id: player.id,
-                name: player.full_name || player.username,
-                email: player.email,
-                username: player.username,
-                city: player.city || '',
-                sports: player.sports?.map(s => s.sport_name) || [],
-                skillLevel: player.sports?.[0]?.skill_level || 'Beginner',
-                availability: [], // Backend doesn't have this field yet
-                bio: player.bio || '',
-                avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`,
-                matchesPlayed: 0,
-                eventsJoined: 0,
-            }));
-            
-            setPlayers(normalizedPlayers);
+            setPlayers(playersData.map(normalizePlayerRecord));
             setEvents(eventsData);
+
+            const backendMessages = await api.getMessages();
+            setMessages(normalizeBackendMessages(backendMessages, userId));
         } catch (error) {
             console.error('Failed to load backend data:', error);
         }
@@ -77,52 +140,46 @@ export function AppProvider({ children }) {
             const completeUser = await api.getCurrentUser();
             
             // Normalize user data to match frontend expectations
-            const normalizedUser = {
-                id: completeUser.id,
-                name: completeUser.full_name || completeUser.username,
-                email: completeUser.email,
-                username: completeUser.username,
-                city: completeUser.city || '',
-                sports: completeUser.sports?.map(s => s.sport_name) || [],
-                skillLevel: completeUser.sports?.[0]?.skill_level || 'Beginner',
-                availability: [],
-                bio: completeUser.bio || '',
-                avatar: completeUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${completeUser.username}`,
-                matchesPlayed: 0,
-                eventsJoined: 0,
-            };
+            const normalizedUser = normalizeCurrentUser(completeUser);
             
             setCurrentUser(normalizedUser);
             setUseBackend(true);
             
             // Load backend data (players and events) after successful login
-            await loadBackendData();
+            await loadBackendData(completeUser.id);
             
             return { success: true };
         } catch (error) {
+            const errorMessage = error.message || 'Invalid email or password';
+
             // Fallback to demo mode
             const user = SEED_PLAYERS.find(p => p.email === email && p.password === password);
             if (user) {
-                setCurrentUser(user);
-                localStorage.setItem('demo_user', JSON.stringify(user));
+                const normalizedUser = normalizeCurrentUser(user);
+                setCurrentUser(normalizedUser);
+                localStorage.setItem('demo_user', JSON.stringify(normalizedUser));
                 return { success: true };
             }
-            return { success: false, error: error.message || 'Invalid email or password' };
+            return { success: false, error: errorMessage };
         }
     };
 
     const signup = async (userData) => {
         try {
+            const cityLocation = getCityLocation(userData.city);
+            const normalizedEmail = userData.email.trim().toLowerCase();
+            const normalizedName = userData.name.trim();
             // Try backend first
             const response = await api.register({
-                username: userData.name.toLowerCase().replace(/\s/g, ''),
-                email: userData.email,
+                username: normalizedName.toLowerCase().replace(/\s/g, ''),
+                email: normalizedEmail,
                 password: userData.password,
-                full_name: userData.name,
+                full_name: normalizedName,
                 city: userData.city,
+                latitude: userData.latitude ?? cityLocation?.latitude ?? null,
+                longitude: userData.longitude ?? cityLocation?.longitude ?? null,
             });
-            
-            // Save sports to backend if provided
+
             if (userData.sports && userData.sports.length > 0) {
                 for (const sportId of userData.sports) {
                     try {
@@ -135,8 +192,7 @@ export function AppProvider({ children }) {
                     }
                 }
             }
-            
-            // Update bio and avatar if provided
+
             if (userData.bio || userData.avatar) {
                 try {
                     await api.updateProfile({
@@ -147,34 +203,27 @@ export function AppProvider({ children }) {
                     console.error('Failed to update profile:', error);
                 }
             }
-            
-            // Fetch complete user data with sports
+
             const completeUser = await api.getCurrentUser();
-            
-            // Normalize user data to match frontend expectations
-            const normalizedUser = {
-                id: completeUser.id,
-                name: completeUser.full_name || completeUser.username,
-                email: completeUser.email,
-                username: completeUser.username,
-                city: completeUser.city || '',
+
+            const normalizedUser = normalizeCurrentUser({
+                ...completeUser,
+                availability: userData.availability || [],
                 sports: completeUser.sports?.map(s => s.sport_name) || userData.sports || [],
                 skillLevel: completeUser.sports?.[0]?.skill_level || userData.skillLevel || 'Beginner',
-                availability: userData.availability || [],
                 bio: completeUser.bio || userData.bio || '',
-                avatar: completeUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${completeUser.username}`,
-                matchesPlayed: 0,
-                eventsJoined: 0,
-            };
-            
-            // Set user and backend mode
+            });
+
             setCurrentUser(normalizedUser);
             setUseBackend(true);
-            
-            // Load backend data (players and events) after successful signup
-            await loadBackendData();
-            
-            return { success: true };
+
+            await loadBackendData(completeUser.id);
+
+            return {
+                success: true,
+                email: response.user?.email || normalizedEmail,
+                message: response.message || 'Account created successfully.',
+            };
         } catch (error) {
             console.error('Backend registration failed:', error);
             
@@ -199,11 +248,14 @@ export function AppProvider({ children }) {
     const updateProfile = async (data) => {
         if (useBackend) {
             try {
+                const cityLocation = getCityLocation(data.city || currentUser?.city);
                 // Update basic profile info
                 const updated = await api.updateProfile({
                     full_name: data.name,
                     bio: data.bio,
                     city: data.city,
+                    latitude: data.latitude ?? cityLocation?.latitude ?? currentUser?.latitude ?? null,
+                    longitude: data.longitude ?? cityLocation?.longitude ?? currentUser?.longitude ?? null,
                 });
                 
                 // Handle sports updates if provided
@@ -242,20 +294,16 @@ export function AppProvider({ children }) {
                 const completeUser = await api.getCurrentUser();
                 
                 // Normalize and update current user
-                const normalizedUser = {
-                    id: completeUser.id,
-                    name: completeUser.full_name || completeUser.username,
-                    email: completeUser.email,
-                    username: completeUser.username,
-                    city: completeUser.city || '',
+                const normalizedUser = normalizeCurrentUser({
+                    ...completeUser,
+                    availability: data.availability || currentUser.availability || [],
                     sports: completeUser.sports?.map(s => s.sport_name) || [],
                     skillLevel: completeUser.sports?.[0]?.skill_level || data.skillLevel || 'Beginner',
-                    availability: data.availability || currentUser.availability || [],
                     bio: completeUser.bio || '',
                     avatar: completeUser.avatar || currentUser.avatar,
                     matchesPlayed: currentUser.matchesPlayed || 0,
                     eventsJoined: currentUser.eventsJoined || 0,
-                };
+                });
                 
                 setCurrentUser(normalizedUser);
                 return { success: true };
@@ -265,7 +313,7 @@ export function AppProvider({ children }) {
         } else {
             // Demo mode
             const updatedPlayers = players.map(p =>
-                p.id === currentUser.id ? { ...p, ...data } : p
+                p.id === currentUser.id ? normalizePlayerRecord({ ...p, ...data }) : p
             );
             const updatedUser = updatedPlayers.find(p => p.id === currentUser.id);
             setPlayers(updatedPlayers);
@@ -350,40 +398,12 @@ export function AppProvider({ children }) {
     };
 
     const sendMessage = async (receiverId, text) => {
+        const normalizedReceiverId = Number(receiverId);
+
         if (useBackend) {
             try {
-                await api.sendMessage(receiverId, text);
-                
-                // Also update local state for immediate UI feedback
-                const senderId = currentUser.id;
-                const existingThread = messages.find(
-                    m => (m.senderId === senderId && m.receiverId === receiverId) ||
-                        (m.senderId === receiverId && m.receiverId === senderId)
-                );
-
-                const newMsg = {
-                    id: 'msg' + Date.now(),
-                    from: senderId,
-                    text,
-                    timestamp: new Date().toISOString(),
-                };
-
-                if (existingThread) {
-                    const updatedMessages = messages.map(m =>
-                        m.id === existingThread.id
-                            ? { ...m, messages: [...m.messages, newMsg] }
-                            : m
-                    );
-                    setMessages(updatedMessages);
-                } else {
-                    const newThread = {
-                        id: 'm' + Date.now(),
-                        senderId,
-                        receiverId,
-                        messages: [newMsg],
-                    };
-                    setMessages([...messages, newThread]);
-                }
+                await api.sendMessage(normalizedReceiverId, text);
+                await loadBackendData(currentUser.id);
                 
                 return { success: true };
             } catch (error) {
@@ -394,8 +414,8 @@ export function AppProvider({ children }) {
             // Demo mode
             const senderId = currentUser.id;
             const existingThread = messages.find(
-                m => (m.senderId === senderId && m.receiverId === receiverId) ||
-                    (m.senderId === receiverId && m.receiverId === senderId)
+                m => (m.senderId === senderId && m.receiverId === normalizedReceiverId) ||
+                    (m.senderId === normalizedReceiverId && m.receiverId === senderId)
             );
 
             const newMsg = {
@@ -416,7 +436,7 @@ export function AppProvider({ children }) {
                 const newThread = {
                     id: 'm' + Date.now(),
                     senderId,
-                    receiverId,
+                    receiverId: normalizedReceiverId,
                     messages: [newMsg],
                 };
                 setMessages([...messages, newThread]);
@@ -436,9 +456,10 @@ export function AppProvider({ children }) {
 
     const getThreadForUser = (userId) => {
         if (!currentUser) return null;
+        const normalizedUserId = Number(userId);
         return messages.find(
-            m => (m.senderId === currentUser.id && m.receiverId === userId) ||
-                (m.senderId === userId && m.receiverId === currentUser.id)
+            m => (m.senderId === currentUser.id && m.receiverId === normalizedUserId) ||
+                (m.senderId === normalizedUserId && m.receiverId === currentUser.id)
         );
     };
 

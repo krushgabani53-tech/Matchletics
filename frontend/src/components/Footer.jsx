@@ -17,7 +17,7 @@ export default function Footer() {
                             </span>
                         </Link>
                         <p className="text-sm text-dark-400 leading-relaxed">
-                            Find sports partners in your city. No GPS tracking — just community-driven player discovery.
+                            Find sports partners in your city with an optional GPS-powered nearby view when you want it.
                         </p>
                     </div>
 

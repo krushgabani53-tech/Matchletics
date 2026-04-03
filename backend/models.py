@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -12,6 +12,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(120))
     city = Column(String(100))
+    latitude = Column(Float)
+    longitude = Column(Float)
     bio = Column(Text)
     avatar = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)

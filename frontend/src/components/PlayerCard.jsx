@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Star, Clock, MessageSquare, Eye } from 'lucide-react';
+import { MapPin, Star, Clock, MessageSquare, Eye, Navigation } from 'lucide-react';
 import { SPORTS } from '../data/seedData';
 
 export default function PlayerCard({ player }) {
@@ -45,6 +45,12 @@ export default function PlayerCard({ player }) {
                             {player.skillLevel}
                         </span>
                     </div>
+                    {Number.isFinite(player.distanceKm) && (
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-brand-400">
+                            <Navigation size={12} />
+                            <span>{player.distanceKm < 1 ? `${Math.round(player.distanceKm * 1000)} m away` : `${player.distanceKm.toFixed(player.distanceKm < 10 ? 1 : 0)} km away`}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

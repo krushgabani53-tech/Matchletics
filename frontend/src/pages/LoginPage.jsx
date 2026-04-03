@@ -123,7 +123,7 @@ export default function LoginPage() {
                             Demo Credentials
                         </div>
                         <p className="text-xs text-dark-400">
-                            Email: <code className="text-brand-300">arjun@matchletics.app</code><br />
+                            Email: <code className="text-brand-300">arjun@playmate.app</code><br />
                             Password: <code className="text-brand-300">demo123</code>
                         </p>
                     </div>
