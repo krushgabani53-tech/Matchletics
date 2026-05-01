@@ -36,6 +36,11 @@ class UserResponse(UserBase):
     match_suggestions: bool
     profile_visible: bool
     show_online_status: bool
+    location_sharing_enabled: bool = True
+    primary_sport: Optional[str] = None
+    distance_km: Optional[float] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     
     class Config:
         from_attributes = True
@@ -97,6 +102,13 @@ class NotificationSettings(BaseModel):
 class PrivacySettings(BaseModel):
     profile_visible: bool
     show_online_status: bool
+    location_sharing_enabled: bool = True
+
+
+class LocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
+    sharing_enabled: Optional[bool] = None
 
 # Dashboard Schemas
 class DashboardStats(BaseModel):

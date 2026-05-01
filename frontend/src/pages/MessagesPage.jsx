@@ -5,6 +5,17 @@ import ChatWindow from '../components/ChatWindow';
 import { MessageSquare, Search } from 'lucide-react';
 import { useState } from 'react';
 
+const KOLKATA_TIME_ZONE = 'Asia/Kolkata';
+
+const getKolkataDateKey = (timestamp) => {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: KOLKATA_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date(timestamp));
+};
+
 export default function MessagesPage() {
     const { userId } = useParams();
     const { currentUser, getUserThreads, getPlayerById } = useApp();
@@ -14,7 +25,7 @@ export default function MessagesPage() {
     if (!currentUser) return null;
 
     const getOtherUserId = (thread) => {
-        return thread.senderId === currentUser.id ? thread.receiverId : thread.senderId;
+        return String(thread.senderId) === String(currentUser.id) ? thread.receiverId : thread.senderId;
     };
 
     const filteredThreads = threads.filter(thread => {
@@ -34,14 +45,35 @@ export default function MessagesPage() {
     const formatTime = (timestamp) => {
         const date = new Date(timestamp);
         const now = new Date();
+
+        const todayKey = getKolkataDateKey(now);
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = getKolkataDateKey(yesterday);
+        const messageKey = getKolkataDateKey(date);
+
+        if (messageKey === todayKey) {
+            return date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: KOLKATA_TIME_ZONE,
+            });
+        }
+        if (messageKey === yesterdayKey) {
+            return 'Yesterday';
+        }
         const diff = now - date;
-        if (diff < 86400000) {
-            return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-        }
         if (diff < 604800000) {
-            return date.toLocaleDateString('en-IN', { weekday: 'short' });
+            return date.toLocaleDateString('en-IN', {
+                weekday: 'short',
+                timeZone: KOLKATA_TIME_ZONE,
+            });
         }
-        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        return date.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            timeZone: KOLKATA_TIME_ZONE,
+        });
     };
 
     return (
@@ -86,7 +118,7 @@ export default function MessagesPage() {
                                     const otherUserId = getOtherUserId(thread);
                                     const otherUser = getPlayerById(otherUserId);
                                     const lastMsg = getLastMessage(thread);
-                                    const isActive = userId === otherUserId;
+                                    const isActive = String(userId) === String(otherUserId);
 
                                     if (!otherUser) return null;
 
@@ -104,7 +136,7 @@ export default function MessagesPage() {
                                                     <span className="text-[10px] text-dark-500 flex-shrink-0">{formatTime(lastMsg.timestamp)}</span>
                                                 </div>
                                                 <p className="text-xs text-dark-400 truncate mt-0.5">
-                                                    {lastMsg.from === currentUser.id ? 'You: ' : ''}{lastMsg.text}
+                                                    {String(lastMsg.from) === String(currentUser.id) ? 'You: ' : ''}{lastMsg.text}
                                                 </p>
                                             </div>
                                         </Link>

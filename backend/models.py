@@ -29,6 +29,7 @@ class User(Base):
     messages_sent = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
     messages_received = relationship("Message", foreign_keys="Message.receiver_id", back_populates="receiver")
     sports = relationship("UserSport", back_populates="user", cascade="all, delete-orphan")
+    location = relationship("UserLocation", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class UserSport(Base):
     __tablename__ = "user_sports"
@@ -39,6 +40,19 @@ class UserSport(Base):
     skill_level = Column(String(20))  # Beginner, Intermediate, Advanced
     
     user = relationship("User", back_populates="sports")
+
+
+class UserLocation(Base):
+    __tablename__ = "user_locations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    latitude = Column(Float, nullable=False, index=True)
+    longitude = Column(Float, nullable=False, index=True)
+    sharing_enabled = Column(Boolean, default=True, nullable=False, index=True)
+    last_updated = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = relationship("User", back_populates="location")
 
 class Message(Base):
     __tablename__ = "messages"

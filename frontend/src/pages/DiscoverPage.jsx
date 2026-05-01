@@ -5,14 +5,19 @@ import PlayerCard from '../components/PlayerCard';
 import SearchBar from '../components/SearchBar';
 import SportFilter from '../components/SportFilter';
 import CitySelector from '../components/CitySelector';
+<<<<<<< HEAD
 import NearbyMap from '../components/NearbyMap';
 import { Users, SlidersHorizontal, Navigation, MapPinned } from 'lucide-react';
 import { getCityLocation, getUserLocation, haversineDistanceKm } from '../utils/location';
+=======
+import { Users, SlidersHorizontal, MapPin } from 'lucide-react';
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
 
 export default function DiscoverPage() {
-    const { players, currentUser } = useApp();
+    const { players, nearbyPlayers, mapPlayers, currentUser, liveLocation, syncLocation, locationPermission } = useApp();
     const [search, setSearch] = useState('');
     const [city, setCity] = useState('');
+<<<<<<< HEAD
     const [addressQuery, setAddressQuery] = useState('');
     const [selectedSports, setSelectedSports] = useState([]);
     const [skillFilter, setSkillFilter] = useState('');
@@ -119,17 +124,26 @@ export default function DiscoverPage() {
             setIsLocating(false);
         }
     };
+=======
+    const [locationMode, setLocationMode] = useState('city');
+    const [selectedSports, setSelectedSports] = useState([]);
+    const [skillFilter, setSkillFilter] = useState('');
+    const [showFilters, setShowFilters] = useState(true);
+    const [syncing, setSyncing] = useState(false);
+    
+    const visiblePlayers = locationMode === 'nearby' ? (nearbyPlayers || []) : players;
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
 
     // Player counts per city
     const playerCounts = useMemo(() => {
         const counts = {};
-        players.forEach(p => {
+        visiblePlayers.forEach(p => {
             if (p.id !== currentUser?.id) {
                 counts[p.city] = (counts[p.city] || 0) + 1;
             }
         });
         return counts;
-    }, [players, currentUser]);
+    }, [visiblePlayers, currentUser]);
 
     const playersWithDistance = useMemo(() => {
         return players.map((player) => {
@@ -149,7 +163,11 @@ export default function DiscoverPage() {
 
     // Filter players
     const filtered = useMemo(() => {
+<<<<<<< HEAD
         return playersWithDistance.filter(p => {
+=======
+        return visiblePlayers.filter(p => {
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
             if (currentUser && p.id === currentUser.id) return false;
             if (city && p.city !== city) return false;
             if (selectedSports.length > 0 && !selectedSports.some(s => p.sports.includes(s))) return false;
@@ -176,17 +194,48 @@ export default function DiscoverPage() {
 
             return left.name.localeCompare(right.name);
         });
+<<<<<<< HEAD
     }, [playersWithDistance, currentUser, city, selectedSports, skillFilter, search, activeLocation, radiusKm, searchMode]);
+=======
+    }, [visiblePlayers, currentUser, city, selectedSports, skillFilter, search]);
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
 
     const clearFilters = () => {
         setCity('');
+        setLocationMode('city');
         setSelectedSports([]);
         setSkillFilter('');
         setSearch('');
         setRadiusKm(15);
     };
 
+<<<<<<< HEAD
     const hasFilters = city || selectedSports.length > 0 || skillFilter || search || radiusKm !== 15 || searchMode !== 'city' || addressQuery;
+=======
+    const handleSyncLocation = async () => {
+        setSyncing(true);
+        try {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        syncLocation(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        alert('Unable to get your location. Please enable location services and try again.');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser');
+            }
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const hasFilters = city || selectedSports.length > 0 || skillFilter || search || locationMode === 'nearby';
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
 
     return (
         <div className="min-h-screen pt-24 pb-16">
@@ -242,7 +291,7 @@ export default function DiscoverPage() {
 
                 {/* Filters */}
                 <div className="card mb-8 space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className="flex items-center gap-2 text-sm font-medium text-dark-300 hover:text-white transition-colors"
@@ -253,15 +302,18 @@ export default function DiscoverPage() {
                                 <span className="px-2 py-0.5 bg-brand-500/15 text-brand-400 text-xs rounded-full">Active</span>
                             )}
                         </button>
-                        {hasFilters && (
-                            <button onClick={clearFilters} className="text-xs text-dark-400 hover:text-brand-400 transition-colors">
-                                Clear all
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {hasFilters && (
+                                <button onClick={clearFilters} className="text-xs text-dark-400 hover:text-brand-400 transition-colors">
+                                    Clear all
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {showFilters && (
                         <div className="space-y-4 animate-slide-down">
+<<<<<<< HEAD
                             {searchMode === 'address' && (
                                 <div className="glass rounded-2xl p-4 space-y-3">
                                     <div>
@@ -286,11 +338,35 @@ export default function DiscoverPage() {
                                     </div>
                                 </div>
                             )}
+=======
+                            {/* Location Mode */}
+                            <div className="flex bg-white/5 p-1 rounded-xl w-fit">
+                                <button
+                                    onClick={() => setLocationMode('city')}
+                                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${locationMode === 'city' ? 'bg-brand-500 text-white shadow-md' : 'text-dark-400 hover:text-white'}`}
+                                >
+                                    By City
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setLocationMode('nearby');
+                                        if (!liveLocation) handleSyncLocation();
+                                    }}
+                                    disabled={syncing}
+                                    className={`flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50 ${locationMode === 'nearby' ? 'bg-green-500 text-white shadow-md' : 'text-dark-400 hover:text-white'}`}
+                                >
+                                    <MapPin size={14} />
+                                    {syncing ? 'Syncing...' : 'Nearby'}
+                                </button>
+                            </div>
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
 
                             {/* Search + City */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <SearchBar value={search} onChange={setSearch} placeholder="Search by name, city, or bio..." />
-                                <CitySelector value={city} onChange={setCity} playerCounts={playerCounts} />
+                                {locationMode === 'city' && (
+                                    <CitySelector value={city} onChange={setCity} playerCounts={playerCounts} />
+                                )}
                             </div>
 
                             {/* Sports */}

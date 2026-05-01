@@ -116,6 +116,28 @@ class ApiService {
         return this.request('/api/users/me/sports');
     }
 
+    async updateUserLocation(latitude, longitude, sharingEnabled) {
+        return this.request('/api/users/me/location', {
+            method: 'PUT',
+            body: JSON.stringify({
+                latitude,
+                longitude,
+                sharing_enabled: sharingEnabled,
+            }),
+        });
+    }
+
+    async getNearbyPlayers(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        return this.request(`/api/users/nearby?${query}`);
+    }
+
+    async getMapPlayers(params = {}) {
+        const query = new URLSearchParams(params).toString();
+        const suffix = query ? `?${query}` : '';
+        return this.request(`/api/users/map-players${suffix}`);
+    }
+
     async deleteUserSport(sportId) {
         return this.request(`/api/users/me/sports/${sportId}`, {
             method: 'DELETE',

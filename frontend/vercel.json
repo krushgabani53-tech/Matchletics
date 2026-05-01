@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
     "framework": "vite",
@@ -9,3 +10,12 @@
         }
     ]
 }
+=======
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)

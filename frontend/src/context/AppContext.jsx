@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { SEED_PLAYERS, SEED_EVENTS, SEED_MESSAGES } from '../data/seedData';
 import { getCityLocation, getUserLocation } from '../utils/location';
 
 const AppContext = createContext(null);
 
+<<<<<<< HEAD
 const normalizeBackendMessages = (backendMessages, currentUserId) => {
     const currentUserIdNumber = Number(currentUserId);
     const threadMap = new Map();
@@ -24,20 +25,93 @@ const normalizeBackendMessages = (backendMessages, currentUserId) => {
                 id: threadId,
                 senderId: currentUserIdNumber,
                 receiverId: otherUserId,
+=======
+const normalizeId = (value) => String(value);
+
+const normalizeBackendTimestamp = (timestamp) => {
+    if (!timestamp) return timestamp;
+
+    if (typeof timestamp === 'string') {
+        const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(timestamp);
+        return hasTimezone ? timestamp : `${timestamp}Z`;
+    }
+
+    return timestamp;
+};
+
+const normalizePlayerRecord = (player) => ({
+    id: player.id,
+    name: player.full_name || player.username,
+    email: player.email,
+    username: player.username,
+    city: player.city || '',
+    sports: player.sports?.map(s => s.sport_name) || [],
+    skillLevel: player.sports?.[0]?.skill_level || 'Beginner',
+    availability: [],
+    bio: player.bio || '',
+    avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username}`,
+    matchesPlayed: 0,
+    eventsJoined: 0,
+    distanceKm: player.distance_km ?? null,
+    latitude: typeof player.latitude === 'number' ? player.latitude : null,
+    longitude: typeof player.longitude === 'number' ? player.longitude : null,
+    primarySport: player.primary_sport || player.sports?.[0]?.sport_name || null,
+    locationSharingEnabled: player.location_sharing_enabled ?? true,
+});
+
+const isSameConversation = (thread, userA, userB) => {
+    const threadSenderId = normalizeId(thread.senderId);
+    const threadReceiverId = normalizeId(thread.receiverId);
+    const normalizedUserA = normalizeId(userA);
+    const normalizedUserB = normalizeId(userB);
+
+    return (
+        (threadSenderId === normalizedUserA && threadReceiverId === normalizedUserB) ||
+        (threadSenderId === normalizedUserB && threadReceiverId === normalizedUserA)
+    );
+};
+
+const normalizeBackendMessages = (messagesData) => {
+    const sortedMessages = [...messagesData].sort(
+        (left, right) => new Date(left.created_at) - new Date(right.created_at)
+    );
+
+    const threadsByUsers = new Map();
+
+    sortedMessages.forEach((message) => {
+        const senderId = message.sender_id;
+        const receiverId = message.receiver_id;
+        const threadKey = [normalizeId(senderId), normalizeId(receiverId)].sort().join('-');
+
+        if (!threadsByUsers.has(threadKey)) {
+            threadsByUsers.set(threadKey, {
+                id: `thread-${threadKey}`,
+                senderId,
+                receiverId,
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
                 messages: [],
             });
         }
 
+<<<<<<< HEAD
         const thread = threadMap.get(threadId);
         thread.messages.push({
             id: message.id,
             from: senderId,
             text: message.content,
             timestamp: message.created_at,
+=======
+        threadsByUsers.get(threadKey).messages.push({
+            id: message.id,
+            from: senderId,
+            text: message.content,
+            timestamp: normalizeBackendTimestamp(message.created_at),
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
             isRead: message.is_read,
         });
     });
 
+<<<<<<< HEAD
     return Array.from(threadMap.values()).sort((left, right) => {
         const leftLastMessage = left.messages[left.messages.length - 1];
         const rightLastMessage = right.messages[right.messages.length - 1];
@@ -83,10 +157,30 @@ const normalizeCurrentUser = (user) => normalizePlayerRecord(user);
 export function AppProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [players, setPlayers] = useState(() => SEED_PLAYERS.map(normalizePlayerRecord));
+=======
+    return Array.from(threadsByUsers.values()).sort((left, right) => {
+        const leftTime = left.messages[left.messages.length - 1]?.timestamp || 0;
+        const rightTime = right.messages[right.messages.length - 1]?.timestamp || 0;
+        return new Date(rightTime) - new Date(leftTime);
+    });
+};
+
+export function AppProvider({ children }) {
+    const [currentUser, setCurrentUser] = useState(null);
+    const [players, setPlayers] = useState(SEED_PLAYERS);
+    const [nearbyPlayers, setNearbyPlayers] = useState(null);
+    const [mapPlayers, setMapPlayers] = useState([]);
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
     const [events, setEvents] = useState(SEED_EVENTS);
     const [messages, setMessages] = useState(SEED_MESSAGES);
     const [loading, setLoading] = useState(true);
     const [useBackend, setUseBackend] = useState(false);
+    const [liveLocation, setLiveLocation] = useState(null);
+    const [locationPermission, setLocationPermission] = useState('prompt');
+    const geolocationWatchRef = useRef(null);
+    const locationSyncTimeoutRef = useRef(null);
+    const lastLocationSyncRef = useRef(0);
+    const liveLocationRef = useRef(null);
 
     // Check if user is logged in on mount
     useEffect(() => {
@@ -121,13 +215,83 @@ export function AppProvider({ children }) {
                 api.getEvents(),
             ]);
             
+<<<<<<< HEAD
             setPlayers(playersData.map(normalizePlayerRecord));
             setEvents(eventsData);
 
             const backendMessages = await api.getMessages();
             setMessages(normalizeBackendMessages(backendMessages, userId));
+=======
+            const normalizedPlayers = playersData.map(normalizePlayerRecord);
+            
+            setPlayers(normalizedPlayers);
+            setEvents(eventsData);
+
+            await loadBackendMessages();
+            await loadMapPlayers();
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
         } catch (error) {
             console.error('Failed to load backend data:', error);
+        }
+    };
+
+    const loadBackendMessages = async () => {
+        try {
+            const backendMessages = await api.getMessages();
+            setMessages(normalizeBackendMessages(backendMessages));
+        } catch (error) {
+            console.error('Failed to load backend messages:', error);
+            setMessages([]);
+        }
+    };
+
+    const loadNearbyPlayers = async (latitude, longitude) => {
+        try {
+            const nearbyData = await api.getNearbyPlayers({
+                latitude,
+                longitude,
+                radius: 100,
+            });
+
+            setNearbyPlayers(nearbyData.map(normalizePlayerRecord));
+        } catch (error) {
+            console.error('Failed to load nearby players:', error);
+            setNearbyPlayers(null);
+        }
+    };
+
+    const loadMapPlayers = async (latitude, longitude) => {
+        try {
+            const params = {};
+            if (typeof latitude === 'number' && typeof longitude === 'number') {
+                params.latitude = latitude;
+                params.longitude = longitude;
+            }
+
+            const mapData = await api.getMapPlayers(params);
+            setMapPlayers(mapData.map(normalizePlayerRecord));
+        } catch (error) {
+            console.error('Failed to load map players:', error);
+            setMapPlayers([]);
+        }
+    };
+
+    const syncLocation = async (latitude, longitude) => {
+        if (!currentUser || currentUser.location_sharing_enabled === false) return;
+
+        const now = Date.now();
+        if (now - lastLocationSyncRef.current < 10000) return;
+        lastLocationSyncRef.current = now;
+
+        try {
+            await api.updateUserLocation(latitude, longitude, true);
+            const latestLocation = { latitude, longitude, updatedAt: new Date().toISOString() };
+            liveLocationRef.current = latestLocation;
+            setLiveLocation(latestLocation);
+            await loadNearbyPlayers(latitude, longitude);
+            await loadMapPlayers(latitude, longitude);
+        } catch (error) {
+            console.error('Failed to sync user location:', error);
         }
     };
 
@@ -140,7 +304,25 @@ export function AppProvider({ children }) {
             const completeUser = await api.getCurrentUser();
             
             // Normalize user data to match frontend expectations
+<<<<<<< HEAD
             const normalizedUser = normalizeCurrentUser(completeUser);
+=======
+            const normalizedUser = {
+                id: completeUser.id,
+                name: completeUser.full_name || completeUser.username,
+                email: completeUser.email,
+                username: completeUser.username,
+                city: completeUser.city || '',
+                sports: completeUser.sports?.map(s => s.sport_name) || [],
+                skillLevel: completeUser.sports?.[0]?.skill_level || 'Beginner',
+                availability: [],
+                bio: completeUser.bio || '',
+                avatar: completeUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${completeUser.username}`,
+                matchesPlayed: 0,
+                eventsJoined: 0,
+                location_sharing_enabled: completeUser.location_sharing_enabled ?? true,
+            };
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
             
             setCurrentUser(normalizedUser);
             setUseBackend(true);
@@ -212,8 +394,18 @@ export function AppProvider({ children }) {
                 sports: completeUser.sports?.map(s => s.sport_name) || userData.sports || [],
                 skillLevel: completeUser.sports?.[0]?.skill_level || userData.skillLevel || 'Beginner',
                 bio: completeUser.bio || userData.bio || '',
+<<<<<<< HEAD
             });
 
+=======
+                avatar: completeUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${completeUser.username}`,
+                matchesPlayed: 0,
+                eventsJoined: 0,
+                location_sharing_enabled: completeUser.location_sharing_enabled ?? true,
+            };
+            
+            // Set user and backend mode
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
             setCurrentUser(normalizedUser);
             setUseBackend(true);
 
@@ -243,6 +435,9 @@ export function AppProvider({ children }) {
         setPlayers(SEED_PLAYERS);
         setEvents(SEED_EVENTS);
         setMessages(SEED_MESSAGES);
+        setNearbyPlayers(null);
+        setMapPlayers([]);
+        setLiveLocation(null);
     };
 
     const updateProfile = async (data) => {
@@ -402,14 +597,22 @@ export function AppProvider({ children }) {
 
         if (useBackend) {
             try {
+<<<<<<< HEAD
                 await api.sendMessage(normalizedReceiverId, text);
                 await loadBackendData(currentUser.id);
                 
+=======
+                await api.sendMessage(receiverId, text);
+
+                await loadBackendMessages();
+
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
                 return { success: true };
             } catch (error) {
                 console.error('Send message error:', error);
                 return { success: false, error: error.message };
             }
+<<<<<<< HEAD
         } else {
             // Demo mode
             const senderId = currentUser.id;
@@ -442,8 +645,129 @@ export function AppProvider({ children }) {
                 setMessages([...messages, newThread]);
             }
             return { success: true };
+=======
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
         }
+
+        // Demo mode
+        const senderId = currentUser.id;
+        const existingThread = messages.find(
+            m => (m.senderId === senderId && m.receiverId === receiverId) ||
+                (m.senderId === receiverId && m.receiverId === senderId)
+        );
+
+        const newMsg = {
+            id: 'msg' + Date.now(),
+            from: senderId,
+            text,
+            timestamp: new Date().toISOString(),
+        };
+
+        if (existingThread) {
+            const updatedMessages = messages.map(m =>
+                m.id === existingThread.id
+                    ? { ...m, messages: [...m.messages, newMsg] }
+                    : m
+            );
+            setMessages(updatedMessages);
+        } else {
+            const newThread = {
+                id: 'm' + Date.now(),
+                senderId,
+                receiverId,
+                messages: [newMsg],
+            };
+            setMessages([...messages, newThread]);
+        }
+        return { success: true };
     };
+
+    useEffect(() => {
+        if (!useBackend || !currentUser) {
+            if (geolocationWatchRef.current !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(geolocationWatchRef.current);
+                geolocationWatchRef.current = null;
+            }
+
+            if (locationSyncTimeoutRef.current) {
+                clearTimeout(locationSyncTimeoutRef.current);
+                locationSyncTimeoutRef.current = null;
+            }
+
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            setLocationPermission('unsupported');
+            loadMapPlayers();
+            return;
+        }
+
+        const startWatchingLocation = async () => {
+            try {
+                const permissionStatus = await navigator.permissions?.query({ name: 'geolocation' });
+                if (permissionStatus?.state) {
+                    setLocationPermission(permissionStatus.state);
+                }
+
+                geolocationWatchRef.current = navigator.geolocation.watchPosition(
+                    (position) => {
+                        setLocationPermission('granted');
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        liveLocationRef.current = { latitude, longitude, updatedAt: new Date().toISOString() };
+                        setLiveLocation(liveLocationRef.current);
+
+                        if (locationSyncTimeoutRef.current) {
+                            clearTimeout(locationSyncTimeoutRef.current);
+                        }
+
+                        locationSyncTimeoutRef.current = setTimeout(() => {
+                            syncLocation(latitude, longitude);
+                        }, 1000);
+                    },
+                    (error) => {
+                        if (error.code === error.PERMISSION_DENIED) {
+                            setLocationPermission('denied');
+                        } else {
+                            setLocationPermission('error');
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 10000,
+                        timeout: 10000,
+                    }
+                );
+            } catch (error) {
+                console.error('Unable to start geolocation watch:', error);
+                setLocationPermission('error');
+            }
+        };
+
+        startWatchingLocation();
+
+        const refreshNearbyInterval = setInterval(() => {
+            if (liveLocationRef.current?.latitude != null && liveLocationRef.current?.longitude != null && currentUser.location_sharing_enabled !== false) {
+                loadNearbyPlayers(liveLocationRef.current.latitude, liveLocationRef.current.longitude);
+                loadMapPlayers(liveLocationRef.current.latitude, liveLocationRef.current.longitude);
+            }
+        }, 15000);
+
+        return () => {
+            if (geolocationWatchRef.current !== null) {
+                navigator.geolocation.clearWatch(geolocationWatchRef.current);
+                geolocationWatchRef.current = null;
+            }
+
+            if (locationSyncTimeoutRef.current) {
+                clearTimeout(locationSyncTimeoutRef.current);
+                locationSyncTimeoutRef.current = null;
+            }
+
+            clearInterval(refreshNearbyInterval);
+        };
+    }, [useBackend, currentUser?.id, currentUser?.location_sharing_enabled]);
 
     const getPlayerById = (id) => {
         // First check if it's the current user
@@ -458,15 +782,19 @@ export function AppProvider({ children }) {
         if (!currentUser) return null;
         const normalizedUserId = Number(userId);
         return messages.find(
+<<<<<<< HEAD
             m => (m.senderId === currentUser.id && m.receiverId === normalizedUserId) ||
                 (m.senderId === normalizedUserId && m.receiverId === currentUser.id)
+=======
+            m => isSameConversation(m, currentUser.id, userId)
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
         );
     };
 
     const getUserThreads = () => {
         if (!currentUser) return [];
         return messages.filter(
-            m => m.senderId === currentUser.id || m.receiverId === currentUser.id
+            m => normalizeId(m.senderId) === normalizeId(currentUser.id) || normalizeId(m.receiverId) === normalizeId(currentUser.id)
         );
     };
 
@@ -474,10 +802,14 @@ export function AppProvider({ children }) {
         <AppContext.Provider value={{
             currentUser,
             players,
+            nearbyPlayers,
+            mapPlayers,
             events,
             messages,
             loading,
             useBackend,
+            liveLocation,
+            locationPermission,
             login,
             signup,
             logout,
@@ -489,6 +821,9 @@ export function AppProvider({ children }) {
             getPlayerById,
             getThreadForUser,
             getUserThreads,
+            syncLocation,
+            loadMapPlayers,
+            loadNearbyPlayers,
         }}>
             {children}
         </AppContext.Provider>

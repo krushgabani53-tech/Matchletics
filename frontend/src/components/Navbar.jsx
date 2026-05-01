@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Menu, X, Search, MessageSquare, Calendar, Compass, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, Search, MessageSquare, Calendar, Compass, User, LogOut, ChevronDown, MapPin, Map } from 'lucide-react';
 
 export default function Navbar() {
-    const { currentUser, logout } = useApp();
+    const { currentUser, logout, liveLocation, syncLocation, locationPermission } = useApp();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
@@ -38,10 +39,34 @@ export default function Navbar() {
         navigate('/');
     };
 
+    const handleSyncLocation = async () => {
+        setSyncing(true);
+        try {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        syncLocation(position.coords.latitude, position.coords.longitude);
+                        setSyncing(false);
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        setSyncing(false);
+                        alert('Unable to get your location. Please enable location services.');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            }
+        } catch (error) {
+            console.error('Sync error:', error);
+            setSyncing(false);
+        }
+    };
+
     const isActive = (path) => location.pathname === path;
 
     const navLinks = currentUser ? [
         { path: '/discover', label: 'Discover', icon: Compass },
+        { path: '/map', label: 'Map', icon: Map },
         { path: '/messages', label: 'Messages', icon: MessageSquare },
     ] : [];
 
@@ -79,7 +104,23 @@ export default function Navbar() {
                     </div>
 
                     {/* Right side */}
-                    <div className="hidden md:flex items-center gap-3">
+                    <div className="hidden md:flex items-center gap-4">
+                        {currentUser && (
+                            <button
+                                onClick={handleSyncLocation}
+                                disabled={syncing}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 border ${liveLocation && locationPermission === 'granted'
+                                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border-green-500/40 hover:from-green-500/30 hover:to-emerald-500/30 hover:shadow-lg hover:shadow-green-500/20'
+                                    : 'bg-blue-500/15 text-blue-300 border-blue-500/30 hover:bg-blue-500/25 hover:shadow-lg hover:shadow-blue-500/20'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                                <MapPin size={18} className={syncing ? 'animate-spin' : 'animate-pulse'} />
+                                <span>{syncing ? 'Syncing...' : 'Live Location'}</span>
+                                {liveLocation && locationPermission === 'granted' && (
+                                    <span className="w-2 h-2 rounded-full bg-green-400 ml-1"></span>
+                                )}
+                            </button>
+                        )}
                         {currentUser ? (
                             <div className="relative" ref={dropdownRef}>
                                 <button
@@ -155,6 +196,20 @@ export default function Navbar() {
                         ))}
                         {currentUser ? (
                             <>
+                                <button
+                                    onClick={handleSyncLocation}
+                                    disabled={syncing}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all border mb-2 ${liveLocation && locationPermission === 'granted'
+                                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border-green-500/40'
+                                        : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                                    } disabled:opacity-50`}
+                                >
+                                    <MapPin size={18} className={syncing ? 'animate-spin' : 'animate-pulse'} />
+                                    <span>{syncing ? 'Syncing...' : 'Live Location'}</span>
+                                    {liveLocation && locationPermission === 'granted' && (
+                                        <span className="w-2 h-2 rounded-full bg-green-400 ml-auto"></span>
+                                    )}
+                                </button>
                                 <hr className="border-white/10 my-2" />
                                 <Link to={`/profile/${currentUser.id}`} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-dark-300 hover:text-white hover:bg-white/5">
                                     <User size={18} />

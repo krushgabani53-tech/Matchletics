@@ -40,6 +40,12 @@ export default function PlayerCard({ player }) {
                     <div className="flex items-center gap-1.5 mt-1">
                         <MapPin size={12} className="text-ocean-400" />
                         <span className="text-xs text-dark-400">{player.city}</span>
+                        {typeof player.distanceKm === 'number' && (
+                            <>
+                                <span className="mx-1 text-dark-700">·</span>
+                                <span className="text-xs text-brand-400">{player.distanceKm.toFixed(1)} km away</span>
+                            </>
+                        )}
                         <span className="mx-1 text-dark-700">·</span>
                         <span className={`badge text-xs border ${skillColor[player.skillLevel]}`}>
                             {player.skillLevel}

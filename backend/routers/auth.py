@@ -1,9 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User
+from models import User, UserLocation
 from schemas import UserCreate, UserLogin, UserResponse, Token
 from auth import get_password_hash, authenticate_user, create_access_token
+from datetime import datetime
+
+# City to default coordinates mapping
+CITY_COORDINATES = {
+    'Mumbai': (19.0760, 72.8777),
+    'Delhi': (28.6139, 77.2090),
+    'Bangalore': (12.9716, 77.5946),
+    'Hyderabad': (17.3850, 78.4867),
+    'Chennai': (13.0827, 80.2707),
+    'Kolkata': (22.5726, 88.3639),
+    'Pune': (18.5204, 73.8567),
+    'Ahmedabad': (23.0225, 72.5714),
+    'Jaipur': (26.9124, 75.7873),
+    'Kochi': (9.9312, 76.2673),
+    'Chandigarh': (30.7333, 76.7794),
+}
 
 router = APIRouter()
 
@@ -40,7 +56,24 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+<<<<<<< HEAD
 
+=======
+    
+    # Create default location record based on city
+    coords = CITY_COORDINATES.get(user_data.city, (20.5937, 78.9629))  # India center as fallback
+    user_location = UserLocation(
+        user_id=new_user.id,
+        latitude=coords[0],
+        longitude=coords[1],
+        sharing_enabled=True,
+        last_updated=datetime.utcnow()
+    )
+    db.add(user_location)
+    db.commit()
+    
+    # Create access token
+>>>>>>> 02de44d (Add map page, deployment config, and fixes)
     access_token = create_access_token(data={"sub": new_user.id})
     
     return {
@@ -60,7 +93,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=dict)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
-    # credentials.username can be either username or email
     user = authenticate_user(db, credentials.username, credentials.password)
     
     if not user:
@@ -69,6 +101,20 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Ensure user has a location record
+    user_location = db.query(UserLocation).filter(UserLocation.user_id == user.id).first()
+    if not user_location:
+        coords = CITY_COORDINATES.get(user.city, (20.5937, 78.9629))
+        user_location = UserLocation(
+            user_id=user.id,
+            latitude=coords[0],
+            longitude=coords[1],
+            sharing_enabled=True,
+            last_updated=datetime.utcnow()
+        )
+        db.add(user_location)
+        db.commit()
     
     access_token = create_access_token(data={"sub": user.id})
     

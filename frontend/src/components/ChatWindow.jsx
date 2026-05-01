@@ -2,6 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Send } from 'lucide-react';
 
+const KOLKATA_TIME_ZONE = 'Asia/Kolkata';
+
+const getKolkataDateKey = (timestamp) => {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: KOLKATA_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(new Date(timestamp));
+};
+
 export default function ChatWindow({ otherUserId }) {
     const { currentUser, getPlayerById, getThreadForUser, sendMessage } = useApp();
     const [text, setText] = useState('');
@@ -28,18 +39,42 @@ export default function ChatWindow({ otherUserId }) {
 
     const formatTime = (timestamp) => {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: KOLKATA_TIME_ZONE,
+        });
     };
 
     const formatDate = (timestamp) => {
         const date = new Date(timestamp);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        const now = new Date();
 
-        if (date.toDateString() === today.toDateString()) return 'Today';
-        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        const todayKey = new Intl.DateTimeFormat('en-CA', {
+            timeZone: KOLKATA_TIME_ZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(now);
+
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = new Intl.DateTimeFormat('en-CA', {
+            timeZone: KOLKATA_TIME_ZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(yesterday);
+
+        const messageKey = getKolkataDateKey(date);
+
+        if (messageKey === todayKey) return 'Today';
+        if (messageKey === yesterdayKey) return 'Yesterday';
+        return date.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            timeZone: KOLKATA_TIME_ZONE,
+        });
     };
 
     const messages = thread?.messages || [];
@@ -81,7 +116,7 @@ export default function ChatWindow({ otherUserId }) {
                             </div>
                             <div className="space-y-2">
                                 {msgs.map(msg => {
-                                    const isMine = msg.from === currentUser.id;
+                                    const isMine = String(msg.from) === String(currentUser.id);
                                     return (
                                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm ${isMine

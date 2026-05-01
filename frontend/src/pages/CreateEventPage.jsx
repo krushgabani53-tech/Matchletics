@@ -24,9 +24,18 @@ export default function CreateEventPage() {
             setError('Please fill in all required fields');
             return;
         }
+        
+        const eventDateTime = new Date(`${form.date}T${form.time}`);
+        if (eventDateTime < new Date()) {
+            setError('Event date and time must be in the future');
+            return;
+        }
+
         createEvent(form);
         navigate('/events');
     };
+
+    const today = new Date().toISOString().split('T')[0];
 
     return (
         <div className="min-h-screen pt-24 pb-16">
@@ -122,6 +131,7 @@ export default function CreateEventPage() {
                                 <input
                                     type="date"
                                     value={form.date}
+                                    min={today}
                                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                                     className="input-field pl-10"
                                     required

@@ -13,9 +13,15 @@ export default function EventsPage() {
     const [showFilters, setShowFilters] = useState(true);
 
     const filtered = useMemo(() => {
+        const now = new Date();
         return events.filter(e => {
             if (city && e.city !== city) return false;
             if (selectedSports.length > 0 && !selectedSports.includes(e.sport)) return false;
+            
+            // Filter out past events
+            const eventDateTime = new Date(`${e.date}T${e.time}`);
+            if (eventDateTime < now) return false;
+            
             return true;
         });
     }, [events, city, selectedSports]);
