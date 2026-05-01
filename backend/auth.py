@@ -5,7 +5,6 @@ import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 import os
 from dotenv import load_dotenv
 
@@ -71,10 +70,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 def authenticate_user(db: Session, username_or_email: str, password: str) -> Optional[User]:
-    normalized_login = username_or_email.strip().lower()
     # Try to find user by username first, then by email
     user = db.query(User).filter(
-        (User.username == username_or_email) | (func.lower(User.email) == normalized_login)
+        (User.username == username_or_email) | (User.email == username_or_email)
     ).first()
     if not user:
         return None

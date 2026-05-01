@@ -44,8 +44,8 @@ export default function LandingPage() {
     const features = [
         {
             icon: MapPin,
-            title: 'City + GPS Discovery',
-            description: 'Select your city or use live GPS to instantly find players near you.',
+            title: 'City-Based Discovery',
+            description: 'Select your city and instantly find players near you. No GPS tracking, no battery drain.',
             gradient: 'from-brand-500 to-emerald-500',
         },
         {
@@ -57,7 +57,7 @@ export default function LandingPage() {
         {
             icon: Shield,
             title: 'Privacy First',
-            description: 'Use city-level visibility by default, or share live GPS only when you choose.',
+            description: 'Only city-level visibility. Your exact location is never tracked or shared.',
             gradient: 'from-purple-500 to-pink-500',
         },
         {
@@ -126,7 +126,7 @@ export default function LandingPage() {
 
                         {/* Subtitle */}
                         <p className="text-lg sm:text-xl text-dark-400 leading-relaxed max-w-xl mb-10 animate-slide-up" style={{ animationDelay: '0.15s' }}>
-                            Connect with sports enthusiasts nearby. Start with your city, opt into GPS when you want a tighter match radius, and get playing.
+                            Connect with sports enthusiasts nearby. No GPS tracking — just select your city, find players, and start playing your favorite sports.
                         </p>
 
                         {/* CTAs */}

@@ -12,8 +12,6 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(120))
     city = Column(String(100))
-    latitude = Column(Float)
-    longitude = Column(Float)
     bio = Column(Text)
     avatar = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)

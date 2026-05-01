@@ -1,31 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { SEED_PLAYERS, SEED_EVENTS, SEED_MESSAGES } from '../data/seedData';
-import { getCityLocation, getUserLocation } from '../utils/location';
 
 const AppContext = createContext(null);
 
-<<<<<<< HEAD
-const normalizeBackendMessages = (backendMessages, currentUserId) => {
-    const currentUserIdNumber = Number(currentUserId);
-    const threadMap = new Map();
-
-    const sortedMessages = [...backendMessages].sort(
-        (left, right) => new Date(left.created_at) - new Date(right.created_at)
-    );
-
-    sortedMessages.forEach(message => {
-        const senderId = Number(message.sender_id);
-        const receiverId = Number(message.receiver_id);
-        const otherUserId = senderId === currentUserIdNumber ? receiverId : senderId;
-        const threadId = `thread-${otherUserId}`;
-
-        if (!threadMap.has(threadId)) {
-            threadMap.set(threadId, {
-                id: threadId,
-                senderId: currentUserIdNumber,
-                receiverId: otherUserId,
-=======
 const normalizeId = (value) => String(value);
 
 const normalizeBackendTimestamp = (timestamp) => {
@@ -88,76 +66,19 @@ const normalizeBackendMessages = (messagesData) => {
                 id: `thread-${threadKey}`,
                 senderId,
                 receiverId,
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
                 messages: [],
             });
         }
 
-<<<<<<< HEAD
-        const thread = threadMap.get(threadId);
-        thread.messages.push({
-            id: message.id,
-            from: senderId,
-            text: message.content,
-            timestamp: message.created_at,
-=======
         threadsByUsers.get(threadKey).messages.push({
             id: message.id,
             from: senderId,
             text: message.content,
             timestamp: normalizeBackendTimestamp(message.created_at),
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
             isRead: message.is_read,
         });
     });
 
-<<<<<<< HEAD
-    return Array.from(threadMap.values()).sort((left, right) => {
-        const leftLastMessage = left.messages[left.messages.length - 1];
-        const rightLastMessage = right.messages[right.messages.length - 1];
-
-        return new Date(rightLastMessage.timestamp) - new Date(leftLastMessage.timestamp);
-    });
-};
-
-const normalizePlayerRecord = (player) => {
-    const location = getUserLocation(player);
-    const sports = Array.isArray(player.sports)
-        ? player.sports
-            .map((sport) => (typeof sport === 'string' ? sport : sport?.sport_name))
-            .filter(Boolean)
-        : [];
-    const firstSport = Array.isArray(player.sports) ? player.sports[0] : null;
-    const skillLevel = typeof firstSport === 'string'
-        ? player.skillLevel || 'Beginner'
-        : firstSport?.skill_level || player.skillLevel || 'Beginner';
-
-    return {
-        id: player.id,
-        name: player.full_name || player.name || player.username,
-        email: player.email,
-        username: player.username,
-        city: player.city || '',
-        latitude: location?.latitude ?? player.latitude ?? null,
-        longitude: location?.longitude ?? player.longitude ?? null,
-        locationSource: location?.locationSource || player.locationSource || null,
-        sports,
-        skillLevel,
-        availability: player.availability || [],
-        bio: player.bio || '',
-        avatar: player.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.username || player.name}`,
-        matchesPlayed: player.matchesPlayed || 0,
-        eventsJoined: player.eventsJoined || 0,
-        distanceKm: player.distance_km ?? player.distanceKm ?? null,
-    };
-};
-
-const normalizeCurrentUser = (user) => normalizePlayerRecord(user);
-
-export function AppProvider({ children }) {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [players, setPlayers] = useState(() => SEED_PLAYERS.map(normalizePlayerRecord));
-=======
     return Array.from(threadsByUsers.values()).sort((left, right) => {
         const leftTime = left.messages[left.messages.length - 1]?.timestamp || 0;
         const rightTime = right.messages[right.messages.length - 1]?.timestamp || 0;
@@ -170,7 +91,6 @@ export function AppProvider({ children }) {
     const [players, setPlayers] = useState(SEED_PLAYERS);
     const [nearbyPlayers, setNearbyPlayers] = useState(null);
     const [mapPlayers, setMapPlayers] = useState([]);
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
     const [events, setEvents] = useState(SEED_EVENTS);
     const [messages, setMessages] = useState(SEED_MESSAGES);
     const [loading, setLoading] = useState(true);
@@ -189,9 +109,9 @@ export function AppProvider({ children }) {
             if (token) {
                 try {
                     const user = await api.getCurrentUser();
-                    setCurrentUser(normalizeCurrentUser(user));
+                    setCurrentUser(user);
                     setUseBackend(true);
-                    await loadBackendData(user.id);
+                    await loadBackendData();
                 } catch (error) {
                     console.error('Auth check failed:', error);
                     api.logout();
@@ -200,7 +120,7 @@ export function AppProvider({ children }) {
                 // Load from localStorage for demo mode
                 const savedUser = localStorage.getItem('demo_user');
                 if (savedUser) {
-                    setCurrentUser(normalizeCurrentUser(JSON.parse(savedUser)));
+                    setCurrentUser(JSON.parse(savedUser));
                 }
             }
             setLoading(false);
@@ -208,20 +128,13 @@ export function AppProvider({ children }) {
         checkAuth();
     }, []);
 
-    const loadBackendData = async (userId) => {
+    const loadBackendData = async () => {
         try {
             const [playersData, eventsData] = await Promise.all([
                 api.searchPlayers(),
                 api.getEvents(),
             ]);
             
-<<<<<<< HEAD
-            setPlayers(playersData.map(normalizePlayerRecord));
-            setEvents(eventsData);
-
-            const backendMessages = await api.getMessages();
-            setMessages(normalizeBackendMessages(backendMessages, userId));
-=======
             const normalizedPlayers = playersData.map(normalizePlayerRecord);
             
             setPlayers(normalizedPlayers);
@@ -229,7 +142,6 @@ export function AppProvider({ children }) {
 
             await loadBackendMessages();
             await loadMapPlayers();
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
         } catch (error) {
             console.error('Failed to load backend data:', error);
         }
@@ -304,9 +216,6 @@ export function AppProvider({ children }) {
             const completeUser = await api.getCurrentUser();
             
             // Normalize user data to match frontend expectations
-<<<<<<< HEAD
-            const normalizedUser = normalizeCurrentUser(completeUser);
-=======
             const normalizedUser = {
                 id: completeUser.id,
                 name: completeUser.full_name || completeUser.username,
@@ -322,46 +231,38 @@ export function AppProvider({ children }) {
                 eventsJoined: 0,
                 location_sharing_enabled: completeUser.location_sharing_enabled ?? true,
             };
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
             
             setCurrentUser(normalizedUser);
             setUseBackend(true);
             
             // Load backend data (players and events) after successful login
-            await loadBackendData(completeUser.id);
+            await loadBackendData();
             
             return { success: true };
         } catch (error) {
-            const errorMessage = error.message || 'Invalid email or password';
-
             // Fallback to demo mode
             const user = SEED_PLAYERS.find(p => p.email === email && p.password === password);
             if (user) {
-                const normalizedUser = normalizeCurrentUser(user);
-                setCurrentUser(normalizedUser);
-                localStorage.setItem('demo_user', JSON.stringify(normalizedUser));
+                setCurrentUser(user);
+                localStorage.setItem('demo_user', JSON.stringify(user));
                 return { success: true };
             }
-            return { success: false, error: errorMessage };
+            return { success: false, error: error.message || 'Invalid email or password' };
         }
     };
 
     const signup = async (userData) => {
         try {
-            const cityLocation = getCityLocation(userData.city);
-            const normalizedEmail = userData.email.trim().toLowerCase();
-            const normalizedName = userData.name.trim();
             // Try backend first
             const response = await api.register({
-                username: normalizedName.toLowerCase().replace(/\s/g, ''),
-                email: normalizedEmail,
+                username: userData.name.toLowerCase().replace(/\s/g, ''),
+                email: userData.email,
                 password: userData.password,
-                full_name: normalizedName,
+                full_name: userData.name,
                 city: userData.city,
-                latitude: userData.latitude ?? cityLocation?.latitude ?? null,
-                longitude: userData.longitude ?? cityLocation?.longitude ?? null,
             });
-
+            
+            // Save sports to backend if provided
             if (userData.sports && userData.sports.length > 0) {
                 for (const sportId of userData.sports) {
                     try {
@@ -374,7 +275,8 @@ export function AppProvider({ children }) {
                     }
                 }
             }
-
+            
+            // Update bio and avatar if provided
             if (userData.bio || userData.avatar) {
                 try {
                     await api.updateProfile({
@@ -385,19 +287,21 @@ export function AppProvider({ children }) {
                     console.error('Failed to update profile:', error);
                 }
             }
-
+            
+            // Fetch complete user data with sports
             const completeUser = await api.getCurrentUser();
-
-            const normalizedUser = normalizeCurrentUser({
-                ...completeUser,
-                availability: userData.availability || [],
+            
+            // Normalize user data to match frontend expectations
+            const normalizedUser = {
+                id: completeUser.id,
+                name: completeUser.full_name || completeUser.username,
+                email: completeUser.email,
+                username: completeUser.username,
+                city: completeUser.city || '',
                 sports: completeUser.sports?.map(s => s.sport_name) || userData.sports || [],
                 skillLevel: completeUser.sports?.[0]?.skill_level || userData.skillLevel || 'Beginner',
+                availability: userData.availability || [],
                 bio: completeUser.bio || userData.bio || '',
-<<<<<<< HEAD
-            });
-
-=======
                 avatar: completeUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${completeUser.username}`,
                 matchesPlayed: 0,
                 eventsJoined: 0,
@@ -405,17 +309,13 @@ export function AppProvider({ children }) {
             };
             
             // Set user and backend mode
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
             setCurrentUser(normalizedUser);
             setUseBackend(true);
-
-            await loadBackendData(completeUser.id);
-
-            return {
-                success: true,
-                email: response.user?.email || normalizedEmail,
-                message: response.message || 'Account created successfully.',
-            };
+            
+            // Load backend data (players and events) after successful signup
+            await loadBackendData();
+            
+            return { success: true };
         } catch (error) {
             console.error('Backend registration failed:', error);
             
@@ -443,14 +343,11 @@ export function AppProvider({ children }) {
     const updateProfile = async (data) => {
         if (useBackend) {
             try {
-                const cityLocation = getCityLocation(data.city || currentUser?.city);
                 // Update basic profile info
                 const updated = await api.updateProfile({
                     full_name: data.name,
                     bio: data.bio,
                     city: data.city,
-                    latitude: data.latitude ?? cityLocation?.latitude ?? currentUser?.latitude ?? null,
-                    longitude: data.longitude ?? cityLocation?.longitude ?? currentUser?.longitude ?? null,
                 });
                 
                 // Handle sports updates if provided
@@ -489,16 +386,20 @@ export function AppProvider({ children }) {
                 const completeUser = await api.getCurrentUser();
                 
                 // Normalize and update current user
-                const normalizedUser = normalizeCurrentUser({
-                    ...completeUser,
-                    availability: data.availability || currentUser.availability || [],
+                const normalizedUser = {
+                    id: completeUser.id,
+                    name: completeUser.full_name || completeUser.username,
+                    email: completeUser.email,
+                    username: completeUser.username,
+                    city: completeUser.city || '',
                     sports: completeUser.sports?.map(s => s.sport_name) || [],
                     skillLevel: completeUser.sports?.[0]?.skill_level || data.skillLevel || 'Beginner',
+                    availability: data.availability || currentUser.availability || [],
                     bio: completeUser.bio || '',
                     avatar: completeUser.avatar || currentUser.avatar,
                     matchesPlayed: currentUser.matchesPlayed || 0,
                     eventsJoined: currentUser.eventsJoined || 0,
-                });
+                };
                 
                 setCurrentUser(normalizedUser);
                 return { success: true };
@@ -508,7 +409,7 @@ export function AppProvider({ children }) {
         } else {
             // Demo mode
             const updatedPlayers = players.map(p =>
-                p.id === currentUser.id ? normalizePlayerRecord({ ...p, ...data }) : p
+                p.id === currentUser.id ? { ...p, ...data } : p
             );
             const updatedUser = updatedPlayers.find(p => p.id === currentUser.id);
             setPlayers(updatedPlayers);
@@ -593,60 +494,17 @@ export function AppProvider({ children }) {
     };
 
     const sendMessage = async (receiverId, text) => {
-        const normalizedReceiverId = Number(receiverId);
-
         if (useBackend) {
             try {
-<<<<<<< HEAD
-                await api.sendMessage(normalizedReceiverId, text);
-                await loadBackendData(currentUser.id);
-                
-=======
                 await api.sendMessage(receiverId, text);
 
                 await loadBackendMessages();
 
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
                 return { success: true };
             } catch (error) {
                 console.error('Send message error:', error);
                 return { success: false, error: error.message };
             }
-<<<<<<< HEAD
-        } else {
-            // Demo mode
-            const senderId = currentUser.id;
-            const existingThread = messages.find(
-                m => (m.senderId === senderId && m.receiverId === normalizedReceiverId) ||
-                    (m.senderId === normalizedReceiverId && m.receiverId === senderId)
-            );
-
-            const newMsg = {
-                id: 'msg' + Date.now(),
-                from: senderId,
-                text,
-                timestamp: new Date().toISOString(),
-            };
-
-            if (existingThread) {
-                const updatedMessages = messages.map(m =>
-                    m.id === existingThread.id
-                        ? { ...m, messages: [...m.messages, newMsg] }
-                        : m
-                );
-                setMessages(updatedMessages);
-            } else {
-                const newThread = {
-                    id: 'm' + Date.now(),
-                    senderId,
-                    receiverId: normalizedReceiverId,
-                    messages: [newMsg],
-                };
-                setMessages([...messages, newThread]);
-            }
-            return { success: true };
-=======
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
         }
 
         // Demo mode
@@ -780,14 +638,8 @@ export function AppProvider({ children }) {
 
     const getThreadForUser = (userId) => {
         if (!currentUser) return null;
-        const normalizedUserId = Number(userId);
         return messages.find(
-<<<<<<< HEAD
-            m => (m.senderId === currentUser.id && m.receiverId === normalizedUserId) ||
-                (m.senderId === normalizedUserId && m.receiverId === currentUser.id)
-=======
             m => isSameConversation(m, currentUser.id, userId)
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
         );
     };
 

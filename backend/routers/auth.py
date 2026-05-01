@@ -25,8 +25,6 @@ router = APIRouter()
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    normalized_email = user_data.email.strip().lower()
-
     # Check if username exists
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
@@ -35,30 +33,25 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
     
     # Check if email exists
-    if db.query(User).filter(User.email == normalized_email).first():
+    if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists"
         )
-
+    
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         username=user_data.username,
-        email=normalized_email,
+        email=user_data.email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
-        city=user_data.city,
-        latitude=user_data.latitude,
-        longitude=user_data.longitude,
+        city=user_data.city
     )
     
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-<<<<<<< HEAD
-
-=======
     
     # Create default location record based on city
     coords = CITY_COORDINATES.get(user_data.city, (20.5937, 78.9629))  # India center as fallback
@@ -73,7 +66,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     
     # Create access token
->>>>>>> 02de44d (Add map page, deployment config, and fixes)
     access_token = create_access_token(data={"sub": new_user.id})
     
     return {
@@ -85,9 +77,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             "username": new_user.username,
             "email": new_user.email,
             "full_name": new_user.full_name,
-            "city": new_user.city,
-            "latitude": new_user.latitude,
-            "longitude": new_user.longitude,
+            "city": new_user.city
         }
     }
 
@@ -126,8 +116,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
-            "city": user.city,
-            "latitude": user.latitude,
-            "longitude": user.longitude,
+            "city": user.city
         }
     }

@@ -230,20 +230,6 @@ cd frontend
 npm run build
 ```
 
-## Vercel Deployment
-
-The frontend is ready for Vercel deployment.
-
-1. In Vercel, set the project root directory to `frontend`.
-2. Use the default build command `npm run build` and output directory `dist`.
-3. Add an environment variable for the deployed backend:
-```env
-VITE_API_URL=https://your-backend-domain.com
-```
-4. Deploy the frontend.
-
-The backend is a FastAPI app and should be deployed separately on a Python host such as Render, Railway, Fly.io, or another VPS. Vercel is best used for the React frontend in this project.
-
 ## Database
 
 The app uses PostgreSQL. Ensure PostgreSQL is installed and running.

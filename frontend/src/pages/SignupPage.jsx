@@ -48,7 +48,6 @@ export default function SignupPage() {
                 setError('Please fill in all fields');
                 return;
             }
-
             if (form.password.length < 6) {
                 setError('Password must be at least 6 characters');
                 return;
@@ -93,7 +92,6 @@ export default function SignupPage() {
             setLoading(false);
         }
     };
-
 
     return (
         <div className="min-h-screen flex">
@@ -151,13 +149,7 @@ export default function SignupPage() {
                                         <input
                                             type="email"
                                             value={form.email}
-                                            onChange={(e) => {
-                                                const email = e.target.value;
-                                                setForm({ ...form, email });
-                                                if (error) {
-                                                    setError('');
-                                                }
-                                            }}
+                                            onChange={(e) => setForm({ ...form, email: e.target.value })}
                                             placeholder="you@example.com"
                                             className="input-field pl-10"
                                             required
@@ -345,7 +337,7 @@ export default function SignupPage() {
                     </p>
 
                     <div className="mt-8 space-y-3">
-                        {['City-based matching', 'Optional GPS nearby view', 'Open match system'].map((item, i) => (
+                        {['City-based matching', 'No GPS required', 'Open match system'].map((item, i) => (
                             <div key={i} className="flex items-center gap-3 glass rounded-xl px-4 py-3 animate-slide-up" style={{ animationDelay: `${i * 0.15}s` }}>
                                 <Check size={16} className="text-brand-400" />
                                 <span className="text-sm text-dark-300">{item}</span>

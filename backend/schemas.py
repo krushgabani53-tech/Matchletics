@@ -8,8 +8,6 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     city: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
 
 class UserCreate(UserBase):
     password: str
@@ -22,8 +20,6 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     bio: Optional[str] = None
     city: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
     avatar: Optional[str] = None
 
 class UserResponse(UserBase):
@@ -120,13 +116,9 @@ class DashboardStats(BaseModel):
 class PlayerSearchParams(BaseModel):
     city: Optional[str] = None
     sport: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    radius_km: Optional[float] = None
 
 class PlayerResponse(UserResponse):
     sports: List[UserSportResponse] = []
-    distance_km: Optional[float] = None
     
     class Config:
         from_attributes = True
